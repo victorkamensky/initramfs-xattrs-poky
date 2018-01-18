@@ -1,0 +1,69 @@
+From 9e58ff29654d53a7acfc8e931f62cba07570ec29 Mon Sep 17 00:00:00 2001
+From: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Date: Sat, 23 Dec 2017 05:14:05 -0600
+Subject: [PATCH 13/15] gen_initramfs_list.sh: add -x option to enable newcx
+ format
+
+-x option populates extended attributes in cpio_list file passed to
+get_init_cpio and selects newcx CPIO format.
+
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Signed-off-by: Taras Kondratiuk <takondra@cisco.com>
+---
+ scripts/gen_initramfs_list.sh | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/scripts/gen_initramfs_list.sh b/scripts/gen_initramfs_list.sh
+index 0055b07b03b6..ba55878e52b7 100755
+--- a/scripts/gen_initramfs_list.sh
++++ b/scripts/gen_initramfs_list.sh
+@@ -24,6 +24,7 @@ $0 [-o <file>] [-u <uid>] [-g <gid>] {-d | <cpio_source>} ...
+ 	-g <gid>       Group ID to map to group ID 0 (root).
+ 		       <gid> is only meaningful if <cpio_source> is a
+ 		       directory.  "squash" forces all files to gid 0.
++	-x             include file extended attributes in cpio archive.
+ 	<cpio_source>  File list or directory for cpio archive.
+ 		       If <cpio_source> is a .cpio file it will be used
+ 		       as direct input to initramfs.
+@@ -146,6 +147,8 @@ parse() {
+ 			;;
+ 	esac
+ 
++	$include_xattrs && getfattr -h -d -m - -e hex --absolute-names ${location} | \
++		sed -e '/^#/d' -e '/^$/d' -e 's/^/xattr /' >> ${output}
+ 	echo "${str}" >> ${output}
+ 
+ 	return 0
+@@ -226,6 +229,8 @@ root_gid=0
+ dep_list=
+ cpio_file=
+ cpio_list=
++cpio_opts=
++include_xattrs=false
+ output="/dev/stdout"
+ output_file=""
+ is_cpio_compressed=
+@@ -281,6 +286,10 @@ while [ $# -gt 0 ]; do
+ 			default_list="$arg"
+ 			${dep_list}default_initramfs
+ 			;;
++		"-x")   # include extended attributers
++			cpio_opts="-x"
++			include_xattrs=true
++			;;
+ 		"-h")
+ 			usage
+ 			exit 0
+@@ -310,7 +319,8 @@ if [ ! -z ${output_file} ]; then
+ 			fi
+ 		fi
+ 		cpio_tfile="$(mktemp ${TMPDIR:-/tmp}/cpiofile.XXXXXX)"
+-		usr/gen_init_cpio $timestamp ${cpio_list} > ${cpio_tfile}
++		usr/gen_init_cpio $timestamp ${cpio_opts} ${cpio_list} \
++			> ${cpio_tfile}
+ 	else
+ 		cpio_tfile=${cpio_file}
+ 	fi
+-- 
+2.14.3
+
