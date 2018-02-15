@@ -1,6 +1,6 @@
-From 763a5cab637207c019b5bc5e09f4f01d50ce1f29 Mon Sep 17 00:00:00 2001
+From 6507cc396c7bbc8c6ec8c962c1f63f006f65c238 Mon Sep 17 00:00:00 2001
 From: Taras Kondratiuk <takondra@cisco.com>
-Date: Sat, 23 Dec 2017 05:13:57 -0600
+Date: Fri, 1 Dec 2017 15:54:02 -0800
 Subject: [PATCH 05/15] initramfs: move files creation into separate state
 
 Move most of the file creation logic into a separate state. This splits
@@ -9,11 +9,11 @@ additional states for a new archive format.
 
 Signed-off-by: Taras Kondratiuk <takondra@cisco.com>
 ---
- init/initramfs.c | 51 ++++++++++++++++++++++++++++++---------------------
- 1 file changed, 30 insertions(+), 21 deletions(-)
+ init/initramfs.c | 52 ++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 30 insertions(+), 22 deletions(-)
 
 diff --git a/init/initramfs.c b/init/initramfs.c
-index 90333973df1d..63e3ef63d9e5 100644
+index 807fe6dbe526..63e3ef63d9e5 100644
 --- a/init/initramfs.c
 +++ b/init/initramfs.c
 @@ -191,6 +191,7 @@ static int __init do_collect(void);
@@ -40,7 +40,7 @@ index 90333973df1d..63e3ef63d9e5 100644
  	}
  	return 0;
  }
-@@ -320,51 +321,59 @@ static void *memcpy_optional(void *dest, const void *src, size_t n)
+@@ -320,52 +321,59 @@ static void *memcpy_optional(void *dest, const void *src, size_t n)
  	return dest;
  }
  
@@ -85,7 +85,8 @@ index 90333973df1d..63e3ef63d9e5 100644
  				sys_fchmod(wfd, mode);
  				if (body_len)
  					sys_ftruncate(wfd, body_len);
--				memcpy_optional(name_buf, collected, N_ALIGN(name_len));
+-				memcpy_optional(name_buf, collected,
+-						N_ALIGN(name_len));
  				state = do_copy;
  			}
  		}
@@ -119,5 +120,5 @@ index 90333973df1d..63e3ef63d9e5 100644
  	}
  	return 0;
 -- 
-2.14.3
+2.7.4
 

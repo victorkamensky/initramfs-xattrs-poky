@@ -1,6 +1,6 @@
-From 1bccce473230d3a5f6f7a6b1b1d25990b180c14e Mon Sep 17 00:00:00 2001
+From 7d42ced72cf824560cc5f86b4cbedf02f480b49d Mon Sep 17 00:00:00 2001
 From: Taras Kondratiuk <takondra@cisco.com>
-Date: Sat, 23 Dec 2017 05:13:53 -0600
+Date: Fri, 22 Dec 2017 23:29:22 -0800
 Subject: [PATCH 01/15] Documentation: add newcx initramfs format description
 
 Many of the Linux security/integrity features are dependent on file
@@ -11,12 +11,13 @@ early as possible for complete security coverage.
 Initramfs (tmpfs) supports xattrs, but newc CPIO archive format does not
 support including them into the archive.
 
-This patch describes "extended" newc format (newcx) that has following
-changes:
+This patch describes "extended" newc format (newcx) that is based on
+newc and has following changes:
 - extended attributes support
-- increased size of filesize to support files >4GB.
-- increased mtime field size to have usec precision and more than
-  32-bit of seconds.
+- increased size of filesize to support files >4GB
+- increased mtime field size to have 64 bits of seconds and added a
+  field for nanoseconds
+- removed unused checksum field
 
 Signed-off-by: Taras Kondratiuk <takondra@cisco.com>
 Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
@@ -26,7 +27,7 @@ Signed-off-by: Victor Kamensky <kamensky@cisco.com>
  1 file changed, 41 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/early-userspace/buffer-format.txt b/Documentation/early-userspace/buffer-format.txt
-index e1fd7f9dad16..d818df4f72dc 100644
+index e1fd7f9dad16..8349b2f28b4b 100644
 --- a/Documentation/early-userspace/buffer-format.txt
 +++ b/Documentation/early-userspace/buffer-format.txt
 @@ -24,6 +24,7 @@ grammar, where:
@@ -37,7 +38,7 @@ index e1fd7f9dad16..d818df4f72dc 100644
  
  	initramfs  := ("\0" | cpio_archive | cpio_gzip_archive)*
  
-@@ -31,20 +32,29 @@ grammar, where:
+@@ -31,20 +32,33 @@ grammar, where:
  
  	cpio_archive := cpio_file* + (<nothing> | cpio_trailer)
  
@@ -68,11 +69,15 @@ index e1fd7f9dad16..d818df4f72dc 100644
  not ignored; see "handling of hard links" below.
  
 -The structure of the cpio_header is as follows (all fields contain
++xattr_size is a total size of xattr_entry including 8 bytes of
++xattr_size. xattr_size has the same hexadecimal ASCII encoding as other
++fields of cpio header (see below).
++
 +The structure of the cpio_newc_header is as follows (all fields contain
  hexadecimal ASCII numbers fully padded with '0' on the left to the
  full width of the field, for example, the integer 4780 is represented
  by the ASCII string "000012ac"):
-@@ -81,6 +91,32 @@ algorithm used.
+@@ -81,6 +95,28 @@ algorithm used.
  If the filename is "TRAILER!!!" this is actually an end-of-archive
  marker; the c_filesize for an end-of-archive marker must be zero.
  
@@ -87,7 +92,8 @@ index e1fd7f9dad16..d818df4f72dc 100644
 +c_uid	       8 bytes		 File uid
 +c_gid	       8 bytes		 File gid
 +c_nlink	       8 bytes		 Number of links
-+c_mtime	      16 bytes		 Modification time (microseconds)
++c_mtime	      16 bytes		 Modification time (seconds)
++c_mtime_nsec   8 bytes		 Modification time (nanoseconds)
 +c_filesize    16 bytes		 Size of data field
 +c_maj	       8 bytes		 Major part of file device number
 +c_min	       8 bytes		 Minor part of file device number
@@ -96,15 +102,10 @@ index e1fd7f9dad16..d818df4f72dc 100644
 +c_namesize     8 bytes		 Length of filename, including final \0
 +c_xattrs_size  8 bytes		 Size of xattrs field
 +
-+Most of the fields match cpio_newc_header except c_mtime that contains
-+microseconds. c_chksum field is dropped.
-+
-+xattr_size is a total size of xattr_entry including 8 bytes of
-+xattr_size. xattr_size has the same hexadecimal ASCII encoding as other
-+fields of cpio header.
++Most of the fields match cpio_newc_header. c_chksum field is dropped.
  
  *** Handling of hard links
  
 -- 
-2.14.3
+2.7.4
 

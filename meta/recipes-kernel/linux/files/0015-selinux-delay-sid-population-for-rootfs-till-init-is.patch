@@ -1,6 +1,6 @@
-From 8551c19143dde6ae77e5c921de06c1c90b0da4c8 Mon Sep 17 00:00:00 2001
+From 3c5312c09a447389cfa5460c4ea2df376dd63a4f Mon Sep 17 00:00:00 2001
 From: Victor Kamensky <kamensky@cisco.com>
-Date: Sat, 23 Dec 2017 05:14:07 -0600
+Date: Wed, 24 Aug 2016 22:47:07 -0400
 Subject: [PATCH 15/15] selinux: delay sid population for rootfs till init is
  complete
 
@@ -30,19 +30,19 @@ Signed-off-by: Victor Kamensky <kamensky@cisco.com>
  2 files changed, 9 insertions(+), 1 deletion(-)
 
 diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 5797bc3e4b37..7638566e6dc1 100644
+index 14c6bd5810bc..b83c4f9934ca 100644
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
-@@ -710,7 +710,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
-                          * selinux to allow that.
+@@ -711,7 +711,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
  			 */
- 			if (strncmp(sb->s_type->name, "rootfs", sizeof("rootfs")) == 0)
--			    sbsec->flags |= SBLABEL_MNT;
-+			    sbsec->flags |= SBLABEL_MNT|DELAYAFTERINIT_MNT;
+ 			if (!strncmp(sb->s_type->name, "rootfs",
+ 				     sizeof("rootfs")))
+-				sbsec->flags |= SBLABEL_MNT;
++				sbsec->flags |= SBLABEL_MNT|DELAYAFTERINIT_MNT;
  
  			/* Defer initialization until selinux_complete_init,
  			   after the initial policy is loaded and the security
-@@ -3200,6 +3200,7 @@ static void selinux_inode_post_setxattr(struct dentry *dentry, const char *name,
+@@ -3201,6 +3201,7 @@ static void selinux_inode_post_setxattr(struct dentry *dentry, const char *name,
  {
  	struct inode *inode = d_backing_inode(dentry);
  	struct inode_security_struct *isec;
@@ -50,15 +50,15 @@ index 5797bc3e4b37..7638566e6dc1 100644
  	u32 newsid;
  	int rc;
  
-@@ -3208,6 +3209,12 @@ static void selinux_inode_post_setxattr(struct dentry *dentry, const char *name,
+@@ -3209,6 +3210,12 @@ static void selinux_inode_post_setxattr(struct dentry *dentry, const char *name,
  		return;
  	}
  
-+        if (!ss_initialized) {
-+            sbsec = inode->i_sb->s_security;
-+            if(sbsec->flags & DELAYAFTERINIT_MNT)
-+                return;
-+        }
++	if (!ss_initialized) {
++		sbsec = inode->i_sb->s_security;
++		if (sbsec->flags & DELAYAFTERINIT_MNT)
++			return;
++	}
 +
  	rc = security_context_to_sid_force(value, size, &newsid);
  	if (rc) {
@@ -76,5 +76,5 @@ index f979c35e037e..7be6ecffd94e 100644
  #define SE_SBINITIALIZED	0x0100
  #define SE_SBPROC		0x0200
 -- 
-2.14.3
+2.7.4
 

@@ -1,13 +1,12 @@
-From 7c06e11f61a59bc40830e876c7ee50edaf901f18 Mon Sep 17 00:00:00 2001
+From 85d24edecdcdcec0c36b3da52c6578ec59ff3663 Mon Sep 17 00:00:00 2001
 From: Taras Kondratiuk <takondra@cisco.com>
-Date: Sat, 23 Dec 2017 05:13:54 -0600
+Date: Fri, 1 Dec 2017 13:19:09 -0800
 Subject: [PATCH 02/15] initramfs: replace states with function pointers
 
 Currently the FSM states are mapped directly to function pointers. Extra
-level of indirection is not needed and makes navigation over the code
+level of intirection is not needed and makes navigation over the code
 harder. One can't jump between states directly when browsing code (e.g.
-with cscope). Need to go through actions[] array each time. It is
-annoying.
+with cscope). Need to go through actions[] array each time.
 
 Replace states with their action function pointers. No behaviour change.
 
@@ -204,5 +203,5 @@ index 8a532050043f..678e018157ff 100644
  		this_header = saved_offset + my_inptr;
  		buf += my_inptr;
 -- 
-2.14.3
+2.7.4
 

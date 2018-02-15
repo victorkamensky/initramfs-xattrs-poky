@@ -1,6 +1,6 @@
-From b41173bd5f11e86577b36b138ded6f815977fe9e Mon Sep 17 00:00:00 2001
+From e4b1b0ba159e4e77bd94af3d3963dc1e44fe26af Mon Sep 17 00:00:00 2001
 From: Victor Kamensky <kamensky@cisco.com>
-Date: Sat, 23 Dec 2017 05:14:06 -0600
+Date: Sat, 2 Jul 2016 10:39:08 -0700
 Subject: [PATCH 14/15] selinux: allow setxattr on rootfs so initramfs code can
  set them
 
@@ -14,31 +14,32 @@ not initialized yet.
 
 Signed-off-by: Victor Kamensky <kamensky@cisco.com>
 ---
- security/selinux/hooks.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ security/selinux/hooks.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 819fd6858b49..5797bc3e4b37 100644
+index 819fd6858b49..14c6bd5810bc 100644
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
-@@ -701,6 +701,17 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+@@ -701,6 +701,18 @@ static int selinux_set_mnt_opts(struct super_block *sb,
  
  	if (!ss_initialized) {
  		if (!num_opts) {
 +			/*
 +			 * Special handling for rootfs. Is genfs but supports
 +			 * setting SELinux context on in-core inodes.
-+                         *
-+                         * Chicken and egg problem: policy may reside in rootfs
-+                         * but for initramfs code to fill in attributes, it needs
-+                         * selinux to allow that.
++			 *
++			 * Chicken and egg problem: policy may reside in rootfs
++			 * but for initramfs code to fill in attributes, it
++			 * needs selinux to allow that.
 +			 */
-+			if (strncmp(sb->s_type->name, "rootfs", sizeof("rootfs")) == 0)
-+			    sbsec->flags |= SBLABEL_MNT;
++			if (!strncmp(sb->s_type->name, "rootfs",
++				     sizeof("rootfs")))
++				sbsec->flags |= SBLABEL_MNT;
 +
  			/* Defer initialization until selinux_complete_init,
  			   after the initial policy is loaded and the security
  			   server is ready to handle calls. */
 -- 
-2.14.3
+2.7.4
 

@@ -1,6 +1,6 @@
-From 43e1a813581471c0a5444d83adf7427267319303 Mon Sep 17 00:00:00 2001
+From ef0c76fdf507c3d10654c95d3fbf9c312e8f8558 Mon Sep 17 00:00:00 2001
 From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Date: Sat, 23 Dec 2017 05:13:58 -0600
+Date: Tue, 23 Dec 2014 18:27:34 -0500
 Subject: [PATCH 06/15] initramfs: separate reading cpio method from header
 
 In preparation for adding xattr support, read the CPIO method
@@ -74,5 +74,5 @@ index 63e3ef63d9e5..2f9918cbec09 100644
  	name_buf = kmalloc(N_ALIGN(PATH_MAX), GFP_KERNEL);
  
 -- 
-2.14.3
+2.7.4
 

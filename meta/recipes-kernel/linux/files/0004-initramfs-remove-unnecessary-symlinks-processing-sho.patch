@@ -1,6 +1,6 @@
-From c1426e7709bcb6cb26971a212f995316a60ef59c Mon Sep 17 00:00:00 2001
+From 97249081788966fa6b2e7c2e166b564c51c38f53 Mon Sep 17 00:00:00 2001
 From: Taras Kondratiuk <takondra@cisco.com>
-Date: Sat, 23 Dec 2017 05:13:56 -0600
+Date: Wed, 29 Nov 2017 18:15:18 -0800
 Subject: [PATCH 04/15] initramfs: remove unnecessary symlinks processing
  shortcut
 
@@ -18,7 +18,7 @@ Signed-off-by: Taras Kondratiuk <takondra@cisco.com>
  1 file changed, 13 insertions(+), 16 deletions(-)
 
 diff --git a/init/initramfs.c b/init/initramfs.c
-index e44f518609e0..90333973df1d 100644
+index 96e9766cd64a..807fe6dbe526 100644
 --- a/init/initramfs.c
 +++ b/init/initramfs.c
 @@ -265,16 +265,7 @@ static int __init do_header(void)
@@ -39,7 +39,7 @@ index e44f518609e0..90333973df1d 100644
  		read_into(name_buf, N_ALIGN(name_len), do_name);
  	return 0;
  }
-@@ -370,6 +361,11 @@ static int __init do_name(void)
+@@ -371,6 +362,11 @@ static int __init do_name(void)
  			sys_chmod(collected, mode);
  			do_utime(collected, mtime);
  		}
@@ -51,7 +51,7 @@ index e44f518609e0..90333973df1d 100644
  	}
  	return 0;
  }
-@@ -395,11 +391,12 @@ static int __init do_copy(void)
+@@ -396,11 +392,12 @@ static int __init do_copy(void)
  
  static int __init do_symlink(void)
  {
@@ -69,7 +69,7 @@ index e44f518609e0..90333973df1d 100644
  	state = do_skip;
  	next_state = do_reset;
  	return 0;
-@@ -451,7 +448,7 @@ static char * __init unpack_to_rootfs(char *buf, unsigned long len)
+@@ -452,7 +449,7 @@ static char * __init unpack_to_rootfs(char *buf, unsigned long len)
  	static __initdata char msg_buf[64];
  
  	header_buf = kmalloc(110, GFP_KERNEL);
@@ -79,5 +79,5 @@ index e44f518609e0..90333973df1d 100644
  
  	if (!header_buf || !symlink_buf || !name_buf)
 -- 
-2.14.3
+2.7.4
 

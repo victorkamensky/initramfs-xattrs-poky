@@ -1,6 +1,6 @@
-From 9e58ff29654d53a7acfc8e931f62cba07570ec29 Mon Sep 17 00:00:00 2001
+From 705d6774c5536d01e05f66b23fedc72837679742 Mon Sep 17 00:00:00 2001
 From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Date: Sat, 23 Dec 2017 05:14:05 -0600
+Date: Fri, 15 Dec 2017 18:09:41 -0800
 Subject: [PATCH 13/15] gen_initramfs_list.sh: add -x option to enable newcx
  format
 
@@ -10,11 +10,13 @@ get_init_cpio and selects newcx CPIO format.
 Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
 Signed-off-by: Taras Kondratiuk <takondra@cisco.com>
 ---
- scripts/gen_initramfs_list.sh | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ scripts/gen_initramfs_list.sh | 13 ++++++++++++-
+ usr/Kconfig                   | 11 +++++++++++
+ usr/Makefile                  |  3 ++-
+ 3 files changed, 25 insertions(+), 2 deletions(-)
 
 diff --git a/scripts/gen_initramfs_list.sh b/scripts/gen_initramfs_list.sh
-index 0055b07b03b6..ba55878e52b7 100755
+index 0055b07b03b6..ca069657ed29 100755
 --- a/scripts/gen_initramfs_list.sh
 +++ b/scripts/gen_initramfs_list.sh
 @@ -24,6 +24,7 @@ $0 [-o <file>] [-u <uid>] [-g <gid>] {-d | <cpio_source>} ...
@@ -25,16 +27,17 @@ index 0055b07b03b6..ba55878e52b7 100755
  	<cpio_source>  File list or directory for cpio archive.
  		       If <cpio_source> is a .cpio file it will be used
  		       as direct input to initramfs.
-@@ -146,6 +147,8 @@ parse() {
+@@ -146,6 +147,9 @@ parse() {
  			;;
  	esac
  
-+	$include_xattrs && getfattr -h -d -m - -e hex --absolute-names ${location} | \
++	$include_xattrs && \
++		getfattr -h -d -m - -e hex --absolute-names ${location} | \
 +		sed -e '/^#/d' -e '/^$/d' -e 's/^/xattr /' >> ${output}
  	echo "${str}" >> ${output}
  
  	return 0
-@@ -226,6 +229,8 @@ root_gid=0
+@@ -226,6 +230,8 @@ root_gid=0
  dep_list=
  cpio_file=
  cpio_list=
@@ -43,7 +46,7 @@ index 0055b07b03b6..ba55878e52b7 100755
  output="/dev/stdout"
  output_file=""
  is_cpio_compressed=
-@@ -281,6 +286,10 @@ while [ $# -gt 0 ]; do
+@@ -281,6 +287,10 @@ while [ $# -gt 0 ]; do
  			default_list="$arg"
  			${dep_list}default_initramfs
  			;;
@@ -54,7 +57,7 @@ index 0055b07b03b6..ba55878e52b7 100755
  		"-h")
  			usage
  			exit 0
-@@ -310,7 +319,8 @@ if [ ! -z ${output_file} ]; then
+@@ -310,7 +320,8 @@ if [ ! -z ${output_file} ]; then
  			fi
  		fi
  		cpio_tfile="$(mktemp ${TMPDIR:-/tmp}/cpiofile.XXXXXX)"
@@ -64,6 +67,42 @@ index 0055b07b03b6..ba55878e52b7 100755
  	else
  		cpio_tfile=${cpio_file}
  	fi
+diff --git a/usr/Kconfig b/usr/Kconfig
+index ad0543e21760..b1058815cbf9 100644
+--- a/usr/Kconfig
++++ b/usr/Kconfig
+@@ -55,6 +55,17 @@ config INITRAMFS_ROOT_GID
+ 
+ 	  If you are not sure, leave it set to "0".
+ 
++config INITRAMFS_NEWCX
++	bool "Use newcx CPIO format for initramfs"
++	depends on INITRAMFS_SOURCE!=""
++	default n
++	help
++	  If selected "usr/gen_init_cpio" will generate newcx CPIO archive
++	  format that supports extended attributes.
++
++	  See <file:Documentation/early-userspace/buffer-format.txt> for
++	  more details.
++
+ config RD_GZIP
+ 	bool "Support initial ramdisks compressed using gzip"
+ 	depends on BLK_DEV_INITRD
+diff --git a/usr/Makefile b/usr/Makefile
+index 0b87e71c00fc..47478b005ae4 100644
+--- a/usr/Makefile
++++ b/usr/Makefile
+@@ -27,7 +27,8 @@ ramfs-input := $(if $(filter-out "",$(CONFIG_INITRAMFS_SOURCE)), \
+ 			$(shell echo $(CONFIG_INITRAMFS_SOURCE)),-d)
+ ramfs-args  := \
+         $(if $(CONFIG_INITRAMFS_ROOT_UID), -u $(CONFIG_INITRAMFS_ROOT_UID)) \
+-        $(if $(CONFIG_INITRAMFS_ROOT_GID), -g $(CONFIG_INITRAMFS_ROOT_GID))
++        $(if $(CONFIG_INITRAMFS_ROOT_GID), -g $(CONFIG_INITRAMFS_ROOT_GID)) \
++        $(if $(CONFIG_INITRAMFS_NEWCX), -x)
+ 
+ # .initramfs_data.cpio.d is used to identify all files included
+ # in initramfs and to detect if any files are added/removed.
 -- 
-2.14.3
+2.7.4
 

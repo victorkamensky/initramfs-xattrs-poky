@@ -1,6 +1,6 @@
-From 8840dbb409c47811a0e040c40ceff1911596b02f Mon Sep 17 00:00:00 2001
+From 1c4826512005283bf30b4d683a5617b854edb54d Mon Sep 17 00:00:00 2001
 From: Taras Kondratiuk <takondra@cisco.com>
-Date: Sat, 23 Dec 2017 05:13:55 -0600
+Date: Wed, 29 Nov 2017 17:52:21 -0800
 Subject: [PATCH 03/15] initramfs: store file name in name_buf
 
 There is already name_buf buffer pre-allocated for a file name. No need
@@ -11,11 +11,11 @@ Add memcpy_optional() function to handle such case.
 
 Signed-off-by: Taras Kondratiuk <takondra@cisco.com>
 ---
- init/initramfs.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ init/initramfs.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
 diff --git a/init/initramfs.c b/init/initramfs.c
-index 678e018157ff..e44f518609e0 100644
+index 678e018157ff..96e9766cd64a 100644
 --- a/init/initramfs.c
 +++ b/init/initramfs.c
 @@ -209,7 +209,6 @@ static inline void __init eat(unsigned n)
@@ -40,16 +40,17 @@ index 678e018157ff..e44f518609e0 100644
  static __initdata int wfd;
  
  static int __init do_name(void)
-@@ -347,7 +353,7 @@ static int __init do_name(void)
+@@ -347,7 +353,8 @@ static int __init do_name(void)
  				sys_fchmod(wfd, mode);
  				if (body_len)
  					sys_ftruncate(wfd, body_len);
 -				vcollected = kstrdup(collected, GFP_KERNEL);
-+				memcpy_optional(name_buf, collected, N_ALIGN(name_len));
++				memcpy_optional(name_buf, collected,
++						N_ALIGN(name_len));
  				state = do_copy;
  			}
  		}
-@@ -374,8 +380,7 @@ static int __init do_copy(void)
+@@ -374,8 +381,7 @@ static int __init do_copy(void)
  		if (xwrite(wfd, victim, body_len) != body_len)
  			error("write error");
  		sys_close(wfd);
@@ -60,5 +61,5 @@ index 678e018157ff..e44f518609e0 100644
  		state = do_skip;
  		return 0;
 -- 
-2.14.3
+2.7.4
 
