@@ -1,4 +1,4 @@
-From d8d7c4d6a2d6d8e9fa32e9f2fe9877b86fadeebe Mon Sep 17 00:00:00 2001
+From 68c10f0f45adc3378f62611d3487ecd83cdea219 Mon Sep 17 00:00:00 2001
 From: Victor Kamensky <kamensky@cisco.com>
 Date: Sat, 9 Jul 2016 18:24:15 -0700
 Subject: [PATCH] cpio: added patch that can produce newcx format with extended
@@ -7,16 +7,16 @@ Subject: [PATCH] cpio: added patch that can produce newcx format with extended
 The patch matches kernel changes https://lkml.org/lkml/2018/1/24/857.
 ---
  src/Makefile.am |   3 +-
- src/copyin.c    |  99 +++++++++++++++++++++++++---
- src/copyout.c   |  95 ++++++++++++++++++++++++++-
- src/cpiohdr.h   |  24 +++++++
+ src/copyin.c    | 100 +++++++++++++++++++++++++---
+ src/copyout.c   |  98 ++++++++++++++++++++++++++-
+ src/cpiohdr.h   |  25 +++++++
  src/defer.c     |   7 ++
  src/extern.h    |   8 ++-
  src/global.c    |   3 +
  src/main.c      |  11 +++-
  src/util.c      |   1 +
  src/xattrs.c    | 200 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 10 files changed, 436 insertions(+), 15 deletions(-)
+ 10 files changed, 441 insertions(+), 15 deletions(-)
  create mode 100644 src/xattrs.c
 
 diff --git a/src/Makefile.am b/src/Makefile.am
@@ -34,7 +34,7 @@ index 9d1f322f3006..1c7e2b8642fb 100644
  noinst_HEADERS =\
   cpio.h\
 diff --git a/src/copyin.c b/src/copyin.c
-index 053afe7f4982..36c4149dd23e 100644
+index 053afe7f4982..f412f9c1c542 100644
 --- a/src/copyin.c
 +++ b/src/copyin.c
 @@ -112,7 +112,9 @@ tape_skip_padding (int in_file_des, off_t offset)
@@ -133,7 +133,7 @@ index 053afe7f4982..36c4149dd23e 100644
        if (archive_format == arf_crcascii
  	  && !strncmp (magic.str, "070702", 6))
  	{
-@@ -1212,6 +1237,52 @@ read_in_new_ascii (struct cpio_file_stat *file_hdr, int in_des)
+@@ -1212,6 +1237,53 @@ read_in_new_ascii (struct cpio_file_stat *file_hdr, int in_des)
    tape_skip_padding (in_des, file_hdr->c_namesize + 110);
  }
  
@@ -150,7 +150,8 @@ index 053afe7f4982..36c4149dd23e 100644
 +  file_hdr->c_uid = FROM_HEX (ascii_header.c_uid);
 +  file_hdr->c_gid = FROM_HEX (ascii_header.c_gid);
 +  file_hdr->c_nlink = FROM_HEX (ascii_header.c_nlink);
-+  file_hdr->c_mtime_usec = FROM_HEX_64 (ascii_header.c_mtime);
++  file_hdr->c_mtime = FROM_HEX_64 (ascii_header.c_mtime);
++  file_hdr->c_mtime_nsec = FROM_HEX (ascii_header.c_mtime_nsec);
 +  file_hdr->c_filesize = FROM_HEX_64 (ascii_header.c_filesize);
 +  file_hdr->c_dev_maj = FROM_HEX (ascii_header.c_dev_maj);
 +  file_hdr->c_dev_min = FROM_HEX (ascii_header.c_dev_min);
@@ -173,7 +174,7 @@ index 053afe7f4982..36c4149dd23e 100644
 +  /* In SVR4 ASCII format, the amount of space allocated for the header
 +     is rounded up to the next long-word, so we might need to drop
 +     1-3 bytes.  */
-+  tape_skip_padding (in_des, file_hdr->c_namesize + 126);
++  tape_skip_padding (in_des, file_hdr->c_namesize + sizeof ascii_header);
 +
 +  if (file_hdr->c_xattrs_size)
 +    {
@@ -186,7 +187,7 @@ index 053afe7f4982..36c4149dd23e 100644
  /* Fill in FILE_HDR by reading a binary format cpio header from
     file descriptor IN_DES, except for the first 6 bytes (the magic
     number, device, and inode number), which are already filled in.  */
-@@ -1342,6 +1413,8 @@ process_copy_in ()
+@@ -1342,6 +1414,8 @@ process_copy_in ()
        read_pattern_file ();
      }
    file_hdr.c_name = NULL;
@@ -195,7 +196,7 @@ index 053afe7f4982..36c4149dd23e 100644
  
    if (rename_batch_file)
      {
-@@ -1453,8 +1526,9 @@ process_copy_in ()
+@@ -1453,8 +1527,9 @@ process_copy_in ()
  	     links that we didn't skip, and this file might have the
  	     data for the links.  If it does, we'll copy in the data
  	     to the links, but not to this file.  */
@@ -207,7 +208,7 @@ index 053afe7f4982..36c4149dd23e 100644
  	    {
  	      if (create_defered_links_to_skipped(&file_hdr, in_file_des) < 0)
  	        {
-@@ -1543,6 +1617,9 @@ process_copy_in ()
+@@ -1543,6 +1618,9 @@ process_copy_in ()
  
  	  copyin_file(&file_hdr, in_file_des);
  
@@ -217,7 +218,7 @@ index 053afe7f4982..36c4149dd23e 100644
  	  if (verbose_flag)
  	    fprintf (stderr, "%s\n", file_hdr.c_name);
  	  if (dot_flag)
-@@ -1558,7 +1635,9 @@ process_copy_in ()
+@@ -1558,7 +1636,9 @@ process_copy_in ()
    if (append_flag)
      return;
  
@@ -229,7 +230,7 @@ index 053afe7f4982..36c4149dd23e 100644
        create_final_defers ();
      }
 diff --git a/src/copyout.c b/src/copyout.c
-index 1f0987a372ae..a739473b7f9d 100644
+index 1f0987a372ae..f12d408c60bd 100644
 --- a/src/copyout.c
 +++ b/src/copyout.c
 @@ -80,7 +80,7 @@ tape_pad_output (int out_file_des, int offset)
@@ -241,17 +242,17 @@ index 1f0987a372ae..a739473b7f9d 100644
      pad = (4 - (offset % 4)) % 4;
    else if (archive_format == arf_tar || archive_format == arf_ustar)
      pad = (512 - (offset % 512)) % 512;
-@@ -382,6 +382,74 @@ write_out_new_ascii_header (const char *magic_string,
+@@ -382,6 +382,77 @@ write_out_new_ascii_header (const char *magic_string,
  }  
  
  int
 +write_out_new_asciix_header (const char *magic_string,
 +			     struct cpio_file_stat *file_hdr, int out_des)
 +{
-+  char ascii_header[126];
++  struct new_asciix_header ascii_header;
 +  char *p;
 +
-+  p = stpcpy (ascii_header, magic_string);
++  p = stpcpy ((char *)&ascii_header, magic_string);
 +  to_ascii_or_warn (p, file_hdr->c_ino, 8, LG_16,
 +		    file_hdr->c_name, _("inode number"));
 +  p += 8;
@@ -267,9 +268,12 @@ index 1f0987a372ae..a739473b7f9d 100644
 +  to_ascii_or_warn (p, file_hdr->c_nlink, 8, LG_16, file_hdr->c_name,
 +		    _("number of links"));
 +  p += 8;
-+  to_ascii_or_warn (p, file_hdr->c_mtime_usec, 16, LG_16, file_hdr->c_name,
++  to_ascii_or_warn (p, file_hdr->c_mtime, 16, LG_16, file_hdr->c_name,
 +		    _("modification time"));
 +  p += 16;
++  to_ascii_or_warn (p, file_hdr->c_mtime_nsec, 8, LG_16, file_hdr->c_name,
++		    _("modification time (nsec)"));
++  p += 8;
 +  if (to_ascii_or_error (p, file_hdr->c_filesize, 16, LG_16, file_hdr->c_name,
 +			 _("file size")))
 +    return 1;
@@ -298,7 +302,7 @@ index 1f0987a372ae..a739473b7f9d 100644
 +			 _("xattrs size")))
 +    return 1;
 +
-+  tape_buffered_write (ascii_header, out_des, sizeof ascii_header);
++  tape_buffered_write ((char *)&ascii_header, out_des, sizeof ascii_header);
 +
 +  /* Write file name to output.  */
 +  tape_buffered_write (file_hdr->c_name, out_des, (long) file_hdr->c_namesize);
@@ -316,7 +320,7 @@ index 1f0987a372ae..a739473b7f9d 100644
  write_out_old_ascii_header (dev_t dev, dev_t rdev,
  			    struct cpio_file_stat *file_hdr, int out_des)
  {
-@@ -531,6 +599,9 @@ write_out_header (struct cpio_file_stat *file_hdr, int out_des)
+@@ -531,6 +602,9 @@ write_out_header (struct cpio_file_stat *file_hdr, int out_des)
      case arf_newascii:
        return write_out_new_ascii_header ("070701", file_hdr, out_des);
        
@@ -326,7 +330,7 @@ index 1f0987a372ae..a739473b7f9d 100644
      case arf_crcascii:
        return write_out_new_ascii_header ("070702", file_hdr, out_des);
        
-@@ -595,6 +666,8 @@ process_copy_out ()
+@@ -595,6 +669,8 @@ process_copy_out ()
    /* Initialize the copy out.  */
    ds_init (&input_name, 128);
    file_hdr.c_magic = 070707;
@@ -335,7 +339,7 @@ index 1f0987a372ae..a739473b7f9d 100644
  
    /* Check whether the output file might be a tape.  */
    out_file_des = archive_des;
-@@ -633,6 +706,12 @@ process_copy_out ()
+@@ -633,6 +709,12 @@ process_copy_out ()
  	  continue;
  	}
  
@@ -348,7 +352,7 @@ index 1f0987a372ae..a739473b7f9d 100644
        /* Process next file.  */
        if ((*xstat) (input_name.ds_string, &file_stat) < 0)
  	stat_error (input_name.ds_string);
-@@ -682,6 +761,15 @@ process_copy_out ()
+@@ -682,6 +764,15 @@ process_copy_out ()
  	      file_hdr.c_namesize = strlen (input_name.ds_string) + 1;
  	    }
  #endif
@@ -364,7 +368,7 @@ index 1f0987a372ae..a739473b7f9d 100644
  
  	  /* Copy the named file to the output.  */
  	  switch (file_hdr.c_mode & CP_IFMT)
-@@ -700,7 +788,7 @@ process_copy_out ()
+@@ -700,7 +791,7 @@ process_copy_out ()
  		      break;
  		    }
  		}
@@ -373,11 +377,11 @@ index 1f0987a372ae..a739473b7f9d 100644
  		  && (file_hdr.c_nlink > 1) )
  		{
  		  if (last_link (&file_hdr) )
-@@ -863,11 +951,14 @@ process_copy_out ()
+@@ -863,11 +954,14 @@ process_copy_out ()
    file_hdr.c_rdev_maj = 0;
    file_hdr.c_rdev_min = 0;
    file_hdr.c_mtime = 0;
-+  file_hdr.c_mtime_usec = 0;
++  file_hdr.c_mtime_nsec = 0;
    file_hdr.c_chksum = 0;
  
    file_hdr.c_filesize = 0;
@@ -389,10 +393,10 @@ index 1f0987a372ae..a739473b7f9d 100644
      write_out_header (&file_hdr, out_file_des);
    else
 diff --git a/src/cpiohdr.h b/src/cpiohdr.h
-index b29e6fb6cdc1..cb293d5bff97 100644
+index b29e6fb6cdc1..d2ec194649ac 100644
 --- a/src/cpiohdr.h
 +++ b/src/cpiohdr.h
-@@ -109,6 +109,27 @@ struct new_ascii_header
+@@ -109,6 +109,28 @@ struct new_ascii_header
  			  the sum of all the bytes in the file  */
  } ATTRIB_PACKED;
  
@@ -408,6 +412,7 @@ index b29e6fb6cdc1..cb293d5bff97 100644
 +  char c_gid[8];
 +  char c_nlink[8];
 +  char c_mtime[16];
++  char c_mtime_nsec[8];
 +  char c_filesize[16];  /* must be 0 for FIFOs and directories */
 +  char c_dev_maj[8];
 +  char c_dev_min[8];
@@ -420,11 +425,11 @@ index b29e6fb6cdc1..cb293d5bff97 100644
  struct cpio_file_stat /* Internal representation of a CPIO header */
  {
    unsigned short c_magic;
-@@ -118,14 +139,17 @@ struct cpio_file_stat /* Internal representation of a CPIO header */
+@@ -118,14 +140,17 @@ struct cpio_file_stat /* Internal representation of a CPIO header */
    gid_t c_gid;
    size_t c_nlink;
    time_t c_mtime;
-+  unsigned long long c_mtime_usec;
++  unsigned long c_mtime_nsec;
    off_t c_filesize;
    long c_dev_maj;
    long c_dev_min;
@@ -567,14 +572,14 @@ index 87cb309dc695..62c44991bec8 100644
        return ARGP_ERR_UNKNOWN;
      }
 diff --git a/src/util.c b/src/util.c
-index 6ff603269c79..f1f3c3017615 100644
+index 6ff603269c79..52f3c0e2dc78 100644
 --- a/src/util.c
 +++ b/src/util.c
 @@ -1296,6 +1296,7 @@ stat_to_cpio (struct cpio_file_stat *hdr, struct stat *st)
    hdr->c_rdev_maj = major (st->st_rdev);
    hdr->c_rdev_min = minor (st->st_rdev);
    hdr->c_mtime = st->st_mtime;
-+  hdr->c_mtime_usec = st->st_mtim.tv_sec * 1000000ULL + st->st_mtim.tv_nsec / 1000ULL;
++  hdr->c_mtime_nsec = st->st_mtim.tv_nsec;
    hdr->c_filesize = st->st_size;
    hdr->c_chksum = 0;
    hdr->c_tar_linkname = NULL;
@@ -785,5 +790,5 @@ index 000000000000..d3a5b307997d
 +  return 0;
 +}
 -- 
-2.5.0
+2.7.4
 
